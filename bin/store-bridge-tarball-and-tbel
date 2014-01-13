@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Likely unused.
+#
+# bridgedb@ponticum:/srv/bridges.torproject.org$ stat bin/store-bridge-tarball-and-tbel
+#   File: `bin/store-bridge-tarball-and-tbel'
+#   Size: 652             Blocks: 8          IO Block: 4096   regular file
+# Device: fe20h/65056d    Inode: 131265      Links: 1
+# Access: (0755/-rwxr-xr-x)  Uid: ( 1531/bridgedb)   Gid: ( 1531/bridgedb)
+# Access: 2014-01-13 01:47:48.501529795 +0000
+# Modify: 2011-09-10 13:13:57.000000000 +0000
+# Change: 2012-03-07 20:48:56.774204686 +0000
+#  Birth: -
+
+set -e
+set -u
+
+TS=$( TZ=UTC date +"%FT%H%M%SZ" )
+
+cd $HOME/bridge-directories
+cat > from-tonga-"$TS".tar.gz
+cd ../run/
+tar xzf ../bridge-directories/from-tonga-"$TS".tar.gz
+echo "`date`: Trying to wget exitlist..." >> ~/tmp/logout.txt
+wget "https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=86.59.30.36&port=443" --timeout=10 --no-check-certificate -q -O bulk-exitlist
+if test $? -eq 0; then
+        echo "`date`: Successfully got exitlist..." >> ~/tmp/logout.txt
+else
+        echo "`date`: Didnt get exitlist..." >> ~/tmp/logout.txt
+fi
+cat bulk-exitlist >> bulk-exitlist-bak
+kill -HUP `cat bridgedb.pid`
+echo "`date`: Done." >> ~/tmp/logout.txt
