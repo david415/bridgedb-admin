@@ -1,0 +1,20 @@
+#!/usr/bin/perl -w
+#
+# Appears unused:
+#
+# bridgedb@ponticum:/srv/bridges.torproject.org$ stat bin/extract-bridgeinfo
+#   File: `bin/extract-bridgeinfo'
+#   Size: 183             Blocks: 8          IO Block: 4096   regular file
+# Device: fe20h/65056d    Inode: 131261      Links: 1
+# Access: (0755/-rwxr-xr-x)  Uid: ( 1531/bridgedb)   Gid: ( 1531/bridgedb)
+# Access: 2014-01-13 01:43:11.629694437 +0000
+# Modify: 2008-02-13 23:14:39.000000000 +0000
+# Change: 2012-03-07 20:48:56.774204686 +0000
+#  Birth: -
+
+while(<>) {
+        print if (/^\@purpose/);
+        print if (/^router /);
+        print if (/^router-signature/);
+        print if (/^(?:opt +)fingerprint/);
+}
