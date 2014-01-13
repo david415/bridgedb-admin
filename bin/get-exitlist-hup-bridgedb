@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# This script is called by cron every 30 minutes and attempts to fetch
+# the current exitlist from the check host.
+#
+# Also, it sends a HUP to BridgeDB in order to make it reload the exitlist.
+# While we could as well wait for Tonga's store-bridge-tarball script to HUP
+# BridgeDB after uploading new descriptors, we want to make sure that BridgeDB
+# has a recent exitlist even when Tonga is down.
+#
+# If something breaks, ask kaner or karsten.
+#
+
+cd /srv/bridges.torproject.org/var/
+wget "https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=38.229.72.19&port=443" --timeout=10 -q -O bulk-exitlist.tmp
+if test $? -eq 0; then
+savelog -q -c 180 bulk-exitlist
+mv bulk-exitlist.tmp bulk-exitlist
+fi
+pidfile=/srv/bridges.torproject.org/run/bridgedb.pid
+
+! [ -e "$pidfile" ] || kill -HUP `cat "$pidfile"`
