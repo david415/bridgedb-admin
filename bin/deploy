@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+set -x
+
+cd ~/bridgedb
+
+PYTHONPATH=/srv/bridges.torproject.org/local/lib/python2.7/site-packages python setup.py install --prefix=/srv/bridges.torproject.org/local
+
+pidfile=/srv/bridges.torproject.org/run/bridgedb.pid
+! [ -e "$pidfile" ] || ( kill `cat "$pidfile"` && sleep 2 )
+
+run-bridgedb
