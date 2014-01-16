@@ -1,3 +1,32 @@
+
+# Python binary and object files
+*.py[cod]
+
+# C extensions
+*.so
+
+# Editor stuff
+\#*
+.\#*
+*~
+
+# Git mergetool backups and save files
+*.orig
+*.bak
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# PyCharm
+.idea/*
+
+# etags/ctags
+TAGS
+
+## old scripts that aren't in use anymore (but which were committed once then
+## removed, in order to archive them)
 dump_and_send_buckets.sh
 extract-bridgeinfo
 extract-bridges
