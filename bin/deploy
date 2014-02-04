@@ -1,13 +1,104 @@
-#!/bin/sh
+#!/bin/bash
 
-set -e
-set -x
+set -eETxv --
 
+# If `true`, do `python setup.py install` on the untarred packages listed in
+# the `$DEPS` variable below:
+INSTALL_DEPS=false
+
+# If `true`, remove the old `bridges-test` virtualenv and recreate it:
+CREATE_NEW_VENV=false
+
+SERVER_ROOT=/srv/bridges.torproject.org
+BIN_DIR="${SERVER_ROOT}"/bin
+ETC_DIR="${SERVER_ROOT}"/etc
+LOG_DIR="${SERVER_ROOT}"/log
+RUN_DIR="${SERVER_ROOT}"/run
+VAR_DIR="${SERVER_ROOT}"/var
+PKG_DIR="${SERVER_ROOT}"/pkg
+LOCAL_DIR="${SERVER_ROOT}"/local
+CONFIG="${ETC_DIR}"/bridgedb.conf
+SITEPKG="${LOCAL_DIR}"/lib/python2.7/site-packages/
+
+PIDFILE=/srv/bridges.torproject.org/run/bridgedb.pid
+
+DEPS="setuptools-2.1.tar.gz"
+DEPS="${DEPS} pip-1.5.tar.gz"
+
+# Where to create the virtualenv:
+WORKON_HOME="$SERVER_ROOT"/.virtualenvs
+ACTIVATE="$WORKON_HOME"/bin/activate
+
+PYTHONPATH="$SITEPKG"
+export PYTHONPATH
+
+# Install dependencies from ../test-packages into ../local
+if [[ "$INSTALL_DEPS" == "true" ]]; then
+    cd "$PKG_DIR" && sha256sum -c sha256sums
+    if [[ "$?" != "0" ]]; then exit 1; fi
+
+    for fname in ${DEPS}; do
+        fullpath=`find ${PKG_DIR} -type f -name "$fname"`
+        shortname=$(basename "$fname" .tar.gz)    # filename w/o extension
+        untarred="${fullpath%/*}/$shortname"      # dir name after untarring
+
+        tar xzf "$fullpath"
+        if [[ "$?" != "0" ]]; then echo "Untar $fullpath failed"; continue; fi
+
+        cd "$untarred" && PYTHONPATH="$SITEPKG" python \
+            "${untarred}/setup.py" install --prefix="$LOCAL_DIR"
+    done
+fi
+
+# Add the new /bin directory to our path so that we have our new setuptools,
+# pip, and virtualenv:
+PATH="${LOCAL_DIR}/bin":"${BIN_DIR}":$PATH
+export PATH
+
+PIP="$(which pip)"
+PIP_CONFIG_FILE="${SERVER_ROOT}/etc/pip.conf"
+export PIP_CONFIG_FILE
+
+# Install venv:
+if ! test "$(pip list | grep virtualenv )"; then
+    $PIP install -I \
+        -t /srv/bridges.torproject.org/local/lib/python2.7/site-packages/ \
+        --install-option="--install-scripts=/srv/bridges.torproject.org/local/bin" virtualenv==1.11
+fi
+
+# If we're supposed to recreate the virtualenv, then delete it first:
+if [[ "$CREATE_NEW_VENV" == "true" ]]; then
+    if test -d "$WORKON_HOME"; then rm -rf "$WORKON_HOME"; fi
+fi
+
+# If the virtualenv doesn't exist, create it:
+if ! test -x "$ACTIVATE"; then
+    PYTHONPATH="$SITEPKG" virtualenv --unzip-setuptools \
+        --system-site-packages \
+        --prompt="(bridges)" $WORKON_HOME
+fi
+
+# Enter the virtualenv:
+source $ACTIVATE
+PYTHONPATH=$PYTHONPATH:${WORKON_HOME}/lib/python2.7/site-packages/
+export PYTHONPATH
+
+# For some reason it can't ever find Babel:
+if [[ "$CREATE_NEW_VENV" == "true" ]]; then
+    if ! test "$(pip list | grep Babel )"; then
+        $PIP install -I -t $SITEPKG \
+            --install-option="--install-scripts=/srv/bridges.torproject.org/local/bin" Babel
+    fi
+fi
+
+# Install BridgeDB from our local copy of https://git.torproject.org/bridgedb.git
 cd ~/bridgedb
+PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py compile_catalog
+PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py install --prefix="$LOCAL_DIR"
 
-PYTHONPATH=/srv/bridges.torproject.org/local/lib/python2.7/site-packages python setup.py install --prefix=/srv/bridges.torproject.org/local
+! [ -e "$PIDFILE" ] || ( kill `cat "$PIDFILE"` && sleep 2 )
 
-pidfile=/srv/bridges.torproject.org/run/bridgedb.pid
-! [ -e "$pidfile" ] || ( kill `cat "$pidfile"` && sleep 2 )
+PYTHONPATH=/srv/bridges.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
+export PYTHONPATH
 
-run-bridgedb
+bridgedb -r "$RUN_DIR" -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
