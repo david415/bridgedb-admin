@@ -1,0 +1,163 @@
+#!/bin/bash
+#
+# This script is for deploying the staging server.
+#
+set -eETxv --
+echo $-
+
+# If `true`, do `python setup.py install` on the untarred packages listed in
+# the `$DEPS` variable below:
+INSTALL_DEPS=false
+
+# If `true`, check the sha256sum for wheels found in the wheelhouse directory
+# and (if the checksums match) install them with pip:
+INSTALL_WHLS=false
+
+# If `true`, remove the old `bridges-test` virtualenv and recreate it:
+CREATE_NEW_VENV=true
+
+REAL_SERVER=/srv/bridges.torproject.org
+REAL_FROM_AUTH="$REAL_SERVER"/from-authority
+EXITLIST="$REAL_SERVER"/var/bulk-exitlist
+STATUS_FILE="$REAL_FROM_AUTH"/networkstatus-bridges
+BRIDGE_FILES="$REAL_FROM_AUTH"/bridge-descriptors
+EXTRA_INFO_FILES="$REAL_FROM_AUTH/cached-extrainfo $REAL_FROM_AUTH/cached-extrainfo.new"
+
+SERVER_DIR="$REAL_SERVER"/home/bridges-test.torproject.org
+BIN_DIR="${SERVER_DIR}"/bin
+ETC_DIR="${SERVER_DIR}"/etc
+LOG_DIR="${SERVER_DIR}"/log
+RUN_DIR="${SERVER_DIR}"/run
+VAR_DIR="${SERVER_DIR}"/var
+CONFIG="${ETC_DIR}"/test-bridgedb.conf
+PKG_DIR="${SERVER_DIR}"/test-packages
+SITEPKG="${SERVER_DIR}"/lib/python2.7/site-packages/
+FROM_AUTH="${RUN_DIR}"/from-authority
+
+DEPS="setuptools-2.1.tar.gz"
+DEPS="${DEPS} pip-1.5.tar.gz"
+DEPS="${DEPS} wheel-0.22.0.tar.gz"
+DEPS="${DEPS} virtualenv-1.11.tar.gz"
+
+# Where to create the virtualenv:
+WORKON_HOME="$SERVER_DIR"/.virtualenvs
+ACTIVATE="$WORKON_HOME"/bin/activate
+
+PYTHONPATH="$SITEPKG"
+export PYTHONPATH
+
+
+# Delete and recreate these directories:
+for dname in "$SITEPKG $LOG_DIR $RUN_DIR $VAR_DIR $FROM_AUTH" ; do
+    if   test -d "$dname"; then rm -rf "$dname"  ; fi
+    if ! test -d "$dname"; then mkdir -p "$dname"; fi
+done
+
+# Install dependencies from ../test-packages into ../local
+if [[ "$INSTALL_DEPS" == "true" ]]; then
+    cd "$PKG_DIR" && sha256sum -c sha256sums
+    if [[ "$?" != "0" ]]; then exit 1; fi
+
+    for fname in ${DEPS}; do
+        fullpath=`find ${PKG_DIR} -type f -name "$fname"`
+        shortname=$(basename "$fname" .tar.gz)    # filename w/o extension
+        untarred="${fullpath%/*}/$shortname"      # dir name after untarring
+
+        tar xzf "$fullpath"
+        if [[ "$?" != "0" ]]; then echo "Untar $fullpath failed"; continue; fi
+
+        cd "$untarred" && PYTHONPATH="$SITEPKG" python \
+            "${untarred}/setup.py" install --prefix="$SERVER_DIR"
+    done
+fi
+
+# Add the new /bin directory to our path so that we have our new setuptools,
+# pip, and virtualenv:
+PATH="${SERVER_DIR}/bin":$PATH
+
+# If we're supposed to recreate the virtualenv, then delete it first:
+if [[ "$CREATE_NEW_VENV" == "true" ]]; then
+    if test -d "$WORKON_HOME"; then rm -rf "$WORKON_HOME"; fi
+fi
+
+# If the virtualenv doesn't exist, create it:
+if ! test -x "$ACTIVATE"; then
+    PYTHONPATH="$SITEPKG" virtualenv --unzip-setuptools \
+        --system-site-packages --always-copy \
+        --prompt="(bridges-test)" $WORKON_HOME
+fi
+
+# Enter the virtualenv:
+source $ACTIVATE
+PYTHONPATH=$PYTHONPATH:${WORKON_HOME}/lib/python2.7/site-packages/
+export PYTHONPATH
+
+if [[ "$INSTALL_WHLS" == "true" ]]; then
+    PIP="$(which pip)"
+    PIP_CONFIG_FILE="${SERVER_DIR}/etc/staging-pip.conf"
+    export PIP_CONFIG_FILE
+
+    cd $PKG_DIR/wheelhouse
+
+    # These must be installed in this order first, because they are
+    # prerequisites:
+    if ! test "$(pip list | grep zope)"; then
+        $PIP install -I --no-download -t $SITEPKG \
+            zope.interface-4.0.5-cp27-none-linux_x86_64.whl
+    fi
+
+    if ! test "$(pip list | grep MarkupSafe)"; then
+        $PIP install -I --no-download -t $SITEPKG \
+            MarkupSafe-0.18-cp27-none-linux_x86_64.whl
+    fi
+
+    for f in `find . -type f -name "*.whl"`; do   # Then install the rest
+        filename=`basename $f`
+        pkgname=${filename%%-*}
+        if ! test "$(pip list | grep $pkgname )"; then
+            $PIP install -I --no-download --no-deps -t $SITEPKG $f
+        fi
+    done
+fi
+
+# For some reason it can't ever find Babel:
+if ! test "$(pip list | grep $pkgname )"; then
+    $PIP install -t $SITEPKG Babel
+fi
+
+# Install BridgeDB from our local copy of http://git.torproject.org/bridgedb.git
+cd ~/bridgedb
+PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py compile_catalog
+PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py install --prefix="$SERVER_DIR"
+
+# Copy the latest exitlist into $VAR_DIR
+if [ -e "$EXITLIST" ] ; then
+    echo "Copying ${EXITLIST}..."
+    mkdir -p "${VAR_DIR}"
+    cp "$EXITLIST" "$VAR_DIR"/bulk-exitlist
+fi
+
+# Copy the descriptor files
+for fname in $STATUS_FILE $BRIDGE_FILES $EXTRA_INFO_FILES ; do
+    if [ -e "$fname" ] ; then
+        mkdir -p "$FROM_AUTH"
+        newfile="$FROM_AUTH"/${fname##$(dirname $fname)/}
+        echo "Copying ${fname} to ${newfile}..."
+        cp "$fname" "$newfile"
+    fi
+done
+
+mkdir -p "${SERVER_DIR}/log"
+
+pidfile="${RUN_DIR}"/bridgedb.pid
+! [ -e "$pidfile" ] || ( kill `cat "$pidfile"` && sleep 2 )
+
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
+export PYTHONPATH
+
+PYTHONPATH=${SERVER_DIR}/local/lib/python2.7/site-packages/:$SITEPKG
+export PYTHONPATH
+
+cd "$SERVER_DIR"
+PATH=$BIN_DIR:$PATH bridgedb -r "${SERVER_DIR}/run" \
+    -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
