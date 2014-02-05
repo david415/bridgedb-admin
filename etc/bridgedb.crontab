@@ -1,0 +1,48 @@
+# 
+# bridgedb.cron
+# -------------
+# This is the crontab for bridgedb@ponticum.
+#
+# Edit this file to introduce tasks to be run by cron.
+#
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').#
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+#
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+#
+# :authors: The Tor Project, Inc.
+# :license: This file is freely distributed as part of BridgeDB, see LICENSE
+#           for details.
+# :copyright: (c) 2007-2013 The Tor Project, Inc.
+# :version: 0.0.2
+#===============================================================================
+#
+# CHANGELOG:
+# ~~~~~~~~~~ 
+# Changes in version 0.0.2 - 2014-02-05
+#   * ADD call to bin/dump-assignments every thirty minutes.
+#
+# Changes in version 0.0.1 - 2013-08-30
+#   * ADD version of config file in use on ponticum.
+#
+#===============================================================================
+
+# m h  dom mon dow   command
+
+@reboot bin/run-bridgedb
+
+#@hourly rsync -e 'ssh -i .ssh/id_rsyncdescs' -av bridge-directories/ metrics@yatei.torproject.org:bridge-directories > /dev/null
+#@hourly rsync -e 'ssh -i .ssh/id_sync_assign' -av run/assignments.log metrics@yatei.torproject.org:assignments> /dev/null
+
+#05 18 * * *   bin/dump_and_send_buckets.sh >/dev/null 2>&1
+
+*/30 * * * *  bin/get-exitlist-hup-bridgedb >/dev/null 2>&1
+*/30 * * * *  bin/dump-assignments >/dev/null 2>&1
+
+@daily /usr/sbin/logrotate --state /srv/bridges.torproject.org/var/logrotate/state /srv/bridges.torproject.org/etc/logrotate.conf
+@daily savelog -c 14 -d -q -J .procmail.log
+
