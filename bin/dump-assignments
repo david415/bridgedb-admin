@@ -1,0 +1,31 @@
+#!/bin/bash
+# -*- mode: shell -*-
+#_____________________________________________________________________________
+#
+# dump-assignments
+# ----------------
+# Called from the bridgedb user's crontab every thirty minutes, this script
+# sends a SIGUSR1 to the running BridgeDB servers to tell them to dump bridge
+# assignments to the appropriate files.
+#
+# :authors: Isis <isis@torproject.org> 0xa3adb67a2cdb8b35
+# :license: This file is part of BridgeDB. See
+#           https://gitweb.torproject.org/bridgedb.git/blob/HEAD:/LICENSE
+#           for more details.
+# :copyright: (c) 2014 Isis Lovecruft
+#             (c) 2014 The Tor Project, Inc.
+# :version: 0.0.1
+#_____________________________________________________________________________
+#
+# CHANGELOG
+# ---------
+# Changes in 0.0.1:
+#     * ADD dump-assignments script.
+#
+#_____________________________________________________________________________
+
+PIDFILE=/srv/bridges.torproject.org/run/bridgedb.pid
+
+if test -e "$PIDFILE" ; then
+    kill -s SIGUSR1 `cat $PIDFILE`
+fi
