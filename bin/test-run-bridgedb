@@ -1,0 +1,17 @@
+#!/bin/bash
+
+HOME_DIR=/home/bridgedb
+SERVER_DIR="${HOME_DIR}"/bridges-test.torproject.org
+LOCAL_DIR="${SERVER_DIR}"/local
+BIN_DIR="${SERVER_DIR}"/bin
+ETC_DIR="${SERVER_DIR}"/etc
+CONFIG="${ETC_DIR}"/bridgedb-test.conf
+SITEPKG="${LOCAL_DIR}"/lib/python2.7/site-packages/
+
+echo "PYTHONPATH=${PYTHONPATH}"
+
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/:$SITEPKG
+export PYTHONPATH
+
+cd "$SERVER_DIR"
+PATH=$BIN_DIR:$PATH bridgedb -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
