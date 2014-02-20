@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+# This script is for deploying the staging server.
+#
 set -eETxv --
 echo $-
 
@@ -92,7 +94,7 @@ export PYTHONPATH
 
 if [[ "$INSTALL_WHLS" == "true" ]]; then
     PIP="$(which pip)"
-    PIP_CONFIG_FILE="${SERVER_DIR}/etc/pip.conf"
+    PIP_CONFIG_FILE="${SERVER_DIR}/etc/testing-pip.conf"
     export PIP_CONFIG_FILE
 
     cd $PKG_DIR/wheelhouse
@@ -100,18 +102,27 @@ if [[ "$INSTALL_WHLS" == "true" ]]; then
     # These must be installed in this order first, because they are
     # prerequisites:
     if ! test "$(pip list | grep zope)"; then
-        $PIP install -I --no-download \
+        $PIP install -I --no-download -t $SITEPKG \
             zope.interface-4.0.5-cp27-none-linux_x86_64.whl
     fi
 
-    if ! test "$(pip list | grep wheel)"; then
-        $PIP install -I --no-download \
+    if ! test "$(pip list | grep MarkupSafe)"; then
+        $PIP install -I --no-download -t $SITEPKG \
             MarkupSafe-0.18-cp27-none-linux_x86_64.whl
     fi
 
     for f in `find . -type f -name "*.whl"`; do   # Then install the rest
-        $PIP install -I --no-download $f
+        filename=`basename $f`
+        pkgname=${filename%%-*}
+        if ! test "$(pip list | grep $pkgname )"; then
+            $PIP install -I --no-download --no-deps -t $SITEPKG $f
+        fi
     done
+fi
+
+# For some reason it can't ever find Babel:
+if ! test "$(pip list | grep $pkgname )"; then
+    $PIP install -t $SITEPKG Babel
 fi
 
 # Install BridgeDB from our local copy of http://git.torproject.org/bridgedb.git
@@ -141,7 +152,8 @@ mkdir -p "${SERVER_DIR}/log"
 pidfile="${RUN_DIR}"/bridgedb.pid
 ! [ -e "$pidfile" ] || ( kill `cat "$pidfile"` && sleep 2 )
 
-PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/local/lib/python2.7/site-packages/:$PYTHONPATH
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/
 export PYTHONPATH
 
 "$BIN_DIR"/test-run-bridgedb
