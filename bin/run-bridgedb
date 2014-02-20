@@ -1,5 +1,21 @@
 #!/bin/bash
+#
+# run-bridgedb
+# -----------------
+# This script is used to start an instance which has already been configured
+# and installed.
+#
+# :authors: sysrqb <sysrqb@torproject.org> 0x017DD169EA793BE2
+#           isis <isis@torproject.org> 0xA3ADB67A2CDB8B35
+# :licence: This file is part of BridgeDB, please see the LICENSE file,
+#           included with BridgeDB for more info.
+# :copyright: (c) 2014 The Tor Project, Inc.
+#             (c) 2014 Matthew Finkel
+#             (c) 2014 Isis Lovecruft
+#-------------------------------------------------------------------------------
 
-cd /
-PYTHONPATH=/srv/bridges.torproject.org/local/lib/python2.7/site-packages python -m TorBridgeDB -c /srv/bridges.torproject.org/etc/bridgedb.conf < /dev/null > /dev/null 2>&1 &
-disown
+cd /srv/bridges.torproject.org/
+. .virtualenvs/bin/activate
+export PATH=${PWD}/bin:${PWD}/local/bin:$PATH
+export PYTHONPATH=${PWD}/local/lib/python2.7/site-packages:$PYTHONPATH
+bridgedb -r `pwd`/run -c `pwd`/etc/bridgedb.conf < /dev/null >> ./server.log 2>&1 & disown
