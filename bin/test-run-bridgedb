@@ -12,13 +12,8 @@
 #             (c) 2014 Isis Lovecruft
 #-------------------------------------------------------------------------------
 
-SERVER_DIR=/srv/bridges.torproject.org/home/bridges-test.torproject.org
-CONFIG="${SERVER_DIR}"/etc/bridgedb-test.conf
-
-PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/
-PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/local/lib/python2.7/site-packages/:$PYTHONPATH
-export PYTHONPATH
-
 cd /srv/bridges.torproject.org/home/bridges-test.torproject.org
-PATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/bin:$PATH bridgedb \
-    -r "${SERVER_DIR}/run" -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
+. .virtualenvs/bin/activate
+export PATH=${PWD}/bin:${PWD}/local/bin:$PATH
+export PYTHONPATH=${PWD}/local/lib/python2.7/site-packages/:${PWD}/lib/python2.7/site-packages/
+bridgedb -r `pwd`/run -c `pwd`/etc/test-bridgedb.conf < /dev/null >> ./test-server.log 2>&1 & disown
