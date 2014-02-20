@@ -94,7 +94,7 @@ export PYTHONPATH
 
 if [[ "$INSTALL_WHLS" == "true" ]]; then
     PIP="$(which pip)"
-    PIP_CONFIG_FILE="${SERVER_DIR}/etc/staging-pip.conf"
+    PIP_CONFIG_FILE="${SERVER_DIR}/etc/testing-pip.conf"
     export PIP_CONFIG_FILE
 
     cd $PKG_DIR/wheelhouse
@@ -152,10 +152,8 @@ mkdir -p "${SERVER_DIR}/log"
 pidfile="${RUN_DIR}"/bridgedb.pid
 ! [ -e "$pidfile" ] || ( kill `cat "$pidfile"` && sleep 2 )
 
-PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
-export PYTHONPATH
-
-PYTHONPATH=${SERVER_DIR}/local/lib/python2.7/site-packages/:$SITEPKG
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/local/lib/python2.7/site-packages/:$PYTHONPATH
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/
 export PYTHONPATH
 
 cd "$SERVER_DIR"
