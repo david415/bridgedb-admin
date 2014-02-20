@@ -1,17 +1,24 @@
 #!/bin/bash
+#
+# test-run-bridgedb
+# -----------------
+# This script is used to start a staging instance which has already been
+# configured and installed.
+#
+# :authors: Isis <isis@torproject.org> 0xa3adb67a2cdb8b35
+# :licence: This file is part of BridgeDB, please see the LICENSE file,
+#           included with BridgeDB for more info.
+# :copyright: (c) 2014 The Tor Project, Inc.
+#             (c) 2014 Isis Lovecruft
+#-------------------------------------------------------------------------------
 
-HOME_DIR=/home/bridgedb
-SERVER_DIR="${HOME_DIR}"/bridges-test.torproject.org
-LOCAL_DIR="${SERVER_DIR}"/local
-BIN_DIR="${SERVER_DIR}"/bin
-ETC_DIR="${SERVER_DIR}"/etc
-CONFIG="${ETC_DIR}"/bridgedb-test.conf
-SITEPKG="${LOCAL_DIR}"/lib/python2.7/site-packages/
+SERVER_DIR=/srv/bridges.torproject.org/home/bridges-test.torproject.org
+CONFIG="${SERVER_DIR}"/etc/bridgedb-test.conf
 
-echo "PYTHONPATH=${PYTHONPATH}"
-
-PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/:$SITEPKG
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/lib/python2.7/site-packages/
+PYTHONPATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/local/lib/python2.7/site-packages/:$PYTHONPATH
 export PYTHONPATH
 
-cd "$SERVER_DIR"
-PATH=$BIN_DIR:$PATH bridgedb -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
+cd /srv/bridges.torproject.org/home/bridges-test.torproject.org
+PATH=/srv/bridges.torproject.org/home/bridges-test.torproject.org/bin:$PATH bridgedb \
+    -r "${SERVER_DIR}/run" -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
