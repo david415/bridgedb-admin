@@ -19,3 +19,4 @@ cd /srv/bridges.torproject.org/
 export PATH=${PWD}/bin:${PWD}/local/bin:$PATH
 export PYTHONPATH=${PWD}/local/lib/python2.7/site-packages:$PYTHONPATH
 bridgedb -r `pwd`/run -c `pwd`/etc/bridgedb.conf < /dev/null >> ./server.log 2>&1 & disown
+exit $?
