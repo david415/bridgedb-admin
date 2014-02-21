@@ -96,8 +96,6 @@ cd ~/bridgedb
 PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py compile_catalog
 PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py install --prefix="$LOCAL_DIR"
 
-! [ -e "$PIDFILE" ] || ( kill `cat "$PIDFILE"` && sleep 2 )
-
 PYTHONPATH=/srv/bridges.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
 export PYTHONPATH
 
