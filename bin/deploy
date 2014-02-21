@@ -99,4 +99,5 @@ PYTHONPATH=$PYTHONPATH python ~/bridgedb/setup.py install --prefix="$LOCAL_DIR"
 PYTHONPATH=/srv/bridges.torproject.org/lib/python2.7/site-packages/:$PYTHONPATH
 export PYTHONPATH
 
-bridgedb -r "$RUN_DIR" -c "$CONFIG" < /dev/null > /dev/null 2>&1 & disown
+"$BIN_DIR"/run-bridgedb
+exit $?
