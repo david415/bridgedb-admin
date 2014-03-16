@@ -69,13 +69,13 @@ fi
 # If we're supposed to recreate the virtualenv, then delete it first:
 if [[ "$CREATE_NEW_VENV" == "true" ]]; then
     if test -d "$WORKON_HOME"; then rm -rf "$WORKON_HOME"; fi
-fi
 
-# If the virtualenv doesn't exist, create it:
-if ! test -x "$ACTIVATE"; then
-    PYTHONPATH="$SITEPKG" virtualenv --unzip-setuptools \
-        --system-site-packages \
-        --prompt="(bridges)" $WORKON_HOME
+    # If the virtualenv doesn't exist, create it:
+    if ! test -x "$ACTIVATE"; then
+	PYTHONPATH="$SITEPKG" virtualenv --unzip-setuptools \
+            --system-site-packages \
+            --prompt="(bridges)" $WORKON_HOME
+    fi
 fi
 
 # Enter the virtualenv:
